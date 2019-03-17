@@ -46,6 +46,8 @@ Now the previous reciever is the transmitter (LED on) and the previous transmitt
 
 #define SwitchPin 3 // Arcade switch is connected to Pin 3 on NANO
 #define LED_PIN 2 // Digital In (DI) of LED
+int JumperPins[] = {7, 6, 5, 4};
+int JumperValue = 0;
 
 int tr = 1; // Using 1 for transmit and 0 for receive
 
@@ -61,13 +63,41 @@ int ReceivedMessage[1] = {000}; // Used to store value received by the NRF24L01
 
 
 void setup(void){
+Serial.begin(9600);
+  pinMode(SwitchPin, INPUT_PULLUP); // Define the arcade switch NANO pin as an Input using Internal Pullups
+  digitalWrite(SwitchPin,HIGH); // Set Pin to HIGH at beginning
 
-pinMode(SwitchPin, INPUT_PULLUP); // Define the arcade switch NANO pin as an Input using Internal Pullups
-digitalWrite(SwitchPin,HIGH); // Set Pin to HIGH at beginning
+  radio.begin(); // Start the NRF24L01
+  radio.openWritingPipe(pipe); // Get NRF24L01 ready to transmit
+  radio.openReadingPipe(1,pipe); // Get NRF24L01 ready to receive
 
-radio.begin(); // Start the NRF24L01
-radio.openWritingPipe(pipe); // Get NRF24L01 ready to transmit
+  for(int i=0; i<4; i++)
+    {
+    pinMode(JumperPins[i],INPUT_PULLUP);
+    }
 
+  for(int i=0; i<4; i++)
+    {
+      if (digitalRead(JumperPins[i]) == HIGH)
+        {
+        JumperValue = JumperValue + (int(pow(2, (digitalRead(JumperPins[i])*i))+0.5));  // Needs the 0.5 added to ensure int rounds up
+        Serial.println(pow(2, (digitalRead(JumperPins[i])*i)));
+        Serial.println(JumperValue);
+        }
+    }
+  JumperValue = 15 - JumperValue;
+  Serial.println(JumperValue);
+
+  if (JumperValue==0)
+    {
+    tr = 1; // Transmitter
+    }
+   else
+    {
+    tr = 0; // Receiver
+    }
+
+Serial.println(tr);
 }
 
 
@@ -78,6 +108,7 @@ void loop(void){
 
 // When in transmit mode stop listening and set LED on.
 if (tr==1){
+  Serial.println("Changing to Transmit mode and waiting for button to be pressed");
   radio.stopListening(); // Stop listening as going to send message when button pressed
   digitalWrite(LED_PIN, HIGH);
 }
@@ -98,6 +129,7 @@ while (tr == 1){
 
 // When changing to receiver flash LED 5 times and then have it off
 if (tr==0){
+  Serial.println("Changing to Receive mode waiting for a message to be received");
   SentMessage[1] = {000}; // Used to store value before being sent through the NRF24L01
   ReceivedMessage[1] = {000}; // Used to store value received by the NRF24L01
   radio.startListening(); // Be a receiver and listen for the message from the transmitter
